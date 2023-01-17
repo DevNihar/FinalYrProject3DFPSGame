@@ -45,4 +45,8 @@ private:
 	//Offset Yaw for the frame before we stop moving
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Movement, meta = (AllowPrivateAccess="true"))
 	float LastMovementOffsetYaw;
+
+	// weather the character is aiming or not
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Movement, meta = (AllowPrivateAccess="true"))
+	bool bAiming;
 };
