@@ -75,6 +75,10 @@ protected:
 	UFUNCTION()
 	void AutoFireReset();
 
+	bool TraceUnderCrosshair(FHitResult& OutTraceHitResult,  FVector& OutHitLocation);
+	/** Trace For items if overlappedItemCount is greater than 0*/
+	void TraceForItems();
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -208,6 +212,15 @@ private:
 
 	FTimerHandle AutoFireTimer;
 
+	/** true if we should trace Every Frame for items */
+	bool bShouldTraceForItems;
+
+	/* Number Of overlapped AItems*/
+	int8 OverlappedItemCount;
+
+	/** The AItem we hit last frame*/
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Items, meta=(AllowPrivateAccess="true"))
+	class AItem* TraceHitItemLastFrame;
 
 public:
 	/**Get CameraBoom Subobject*/
@@ -221,4 +234,10 @@ public:
 
 	UFUNCTION(BlueprintCallable)
 	float GetCrosshairSpreadMultiplier() const ;
+
+	/** Get OverlappedItemCount */
+	FORCEINLINE int8 GetOverlappedItemsCount() const { return OverlappedItemCount; };
+
+	/** Increments / Decrements the OverlappedItemCount by a certain Amount and sets bShouldTraceForItems */
+	void IncrementOverlappedItemCount(int8 Amount);
 };
