@@ -26,7 +26,7 @@ private:
 	UPROPERTY(VisibleAnywhere,  BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess="true"))
 	class AShooterCharacter* ShooterCharacter;
 	
-	// Stores the speed of the palyer using velocity
+	// Stores the speed of the player using velocity
 	UPROPERTY(VisibleAnywhere,  BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess="true"))
 	float Speed;
 	

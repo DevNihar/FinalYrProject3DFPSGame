@@ -76,8 +76,25 @@ protected:
 	void AutoFireReset();
 
 	bool TraceUnderCrosshair(FHitResult& OutTraceHitResult,  FVector& OutHitLocation);
+	
 	/** Trace For items if overlappedItemCount is greater than 0*/
 	void TraceForItems();
+
+	/** Spawns a AWeapon and equips it to the mesh */
+	class AWeapon* SpawnDefaultWeapon();
+
+	/** Equips a weapon to the weapon socket */
+	void EquipWeapon(AWeapon* WeaponToEquip);
+
+	/** Detaches the equipped weapon and lets it fall to the ground*/
+	void DropWeapon();
+
+	void SelectButtonPressed();
+	
+	void SelectButtonReleased();
+
+	/** Drops the currently equipped weapon with the TraceHitWeapon */
+	void SwapWeapon(AWeapon* WeaponToSwap);
 
 public:	
 	// Called every frame
@@ -222,22 +239,47 @@ private:
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Items, meta=(AllowPrivateAccess="true"))
 	class AItem* TraceHitItemLastFrame;
 
+	/** Currently Equipped Weapon */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Combat, meta=(AllowPrivateAccess="true"))
+	AWeapon* EquippedWeapon;
+
+	/** Set This in blueprints for default Weapon Class */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category=Combat, meta=(AllowPrivateAccess="true"))
+	TSubclassOf<AWeapon> DefaultWeaponClass;
+
+	/** The item currently hit by our trace in traceforitems function (Can be null) */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Combat, meta=(AllowPrivateAccess="true"))
+	AItem* TraceHitItem;
+
+	/** Distance outward from the camera for the interp destination*/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly,  Category=Items, meta=(AllowPrivateAccess="true"))
+	float CameraInterpDistance;
+
+	/** Distance upward from the camera for the interp destination*/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly,  Category=Items, meta=(AllowPrivateAccess="true"))
+	float CameraInterpElevation;
+
 public:
 	/**Get CameraBoom Subobject*/
-	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; };
+	FORCEINLINE USpringArmComponent* GetCameraBoom() const { return CameraBoom; }
 
 	/**Get FollowCamera Subobject*/
-	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; };
+	FORCEINLINE UCameraComponent* GetFollowCamera() const { return FollowCamera; }
 
 	/** Get Aiming variable*/
-	FORCEINLINE bool GetAiming() const { return bAiming; };
+	FORCEINLINE bool GetAiming() const { return bAiming; }
 
 	UFUNCTION(BlueprintCallable)
 	float GetCrosshairSpreadMultiplier() const ;
 
 	/** Get OverlappedItemCount */
-	FORCEINLINE int8 GetOverlappedItemsCount() const { return OverlappedItemCount; };
+	FORCEINLINE int8 GetOverlappedItemsCount() const { return OverlappedItemCount; }
 
 	/** Increments / Decrements the OverlappedItemCount by a certain Amount and sets bShouldTraceForItems */
 	void IncrementOverlappedItemCount(int8 Amount);
+
+
+	FVector GetCameraInterpLocation();
+
+	void GetPickupItem(AItem* Item);
 };
