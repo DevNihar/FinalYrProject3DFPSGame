@@ -103,7 +103,7 @@ private:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category= "Item Properties", meta = (AllowPrivateAccess="true"))
 	EItemRarity ItemRarity;
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,  Category= "Item Properties", meta = (AllowPrivateAccess="true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Item Properties", meta = (AllowPrivateAccess="true"))
 	TArray<bool> ActiveStars;
 
 	/** Stores the state of the item */
@@ -115,28 +115,38 @@ private:
 	class UCurveFloat* ItemZCurve;
 
 	/** Starting Location when the interping begins */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,  Category= "Item Properties", meta = (AllowPrivateAccess="true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Item Properties", meta = (AllowPrivateAccess="true"))
 	FVector ItemInterpStartLocation;
 	
 	/** Target interp Location in front of camera */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,  Category= "Item Properties", meta = (AllowPrivateAccess="true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Item Properties", meta = (AllowPrivateAccess="true"))
 	FVector CameraTargetLocation;
 
 	/** true when interping */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,  Category= "Item Properties", meta = (AllowPrivateAccess="true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Item Properties", meta = (AllowPrivateAccess="true"))
 	bool bInterping;
 
 	/** Plays when we start interping */
 	FTimerHandle ItemInterpTimer;
 
 	/** Duration of the curve and timer */
-	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly,  Category= "Item Properties", meta = (AllowPrivateAccess="true"))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category= "Item Properties", meta = (AllowPrivateAccess="true"))
 	float ZCurveTime;
 
 	/** Pointer to the character */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly,  Category= "Item Properties", meta = (AllowPrivateAccess="true"))
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Item Properties", meta = (AllowPrivateAccess="true"))
 	class AShooterCharacter* Character;
 
+	/** X and Y for the Item when Interpolating in the equipInterp state */
+	float ItemInterpX;
+	float ItemInterpY;
+
+	/** Initial Yaw Offset between the camera and the interping Object */
+	float InterpInitialYawOffset;
+
+	/** Curve used to scale the Item when Interping */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category= "Item Properties", meta = (AllowPrivateAccess="true"))
+	UCurveFloat* ItemScaleCurve;
 
 
 public:

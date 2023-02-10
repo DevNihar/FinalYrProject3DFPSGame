@@ -32,7 +32,7 @@ void AWeapon::ThrowWeapon()
     FVector ImpulseDirection = MeshRight.RotateAngleAxis(-20.f, MeshForward);
     float RandomRotation{30.f};
     ImpulseDirection = ImpulseDirection.RotateAngleAxis(RandomRotation, FVector(0.f, 0.f, 1.f));
-    ImpulseDirection *= 20'000;
+    ImpulseDirection *= 2000;
     GetItemMesh()->AddImpulse(ImpulseDirection);
     bFalling = true;
     GetWorldTimerManager().SetTimer(ThrowWeaponTimer, this, &AWeapon::StopFalling, ThrowWeaponTime); 
