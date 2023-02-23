@@ -6,6 +6,23 @@
 #include "GameFramework/Character.h"
 #include "ShooterCharacter.generated.h"
 
+UENUM(BlueprintType)
+enum class EAmmoType : uint8
+{
+	EAT_9mm UMETA(DisplayName = "9mm"),
+	EAT_AR UMETA(DisplayName = "Assualt Rifle"),
+	EAT_MAX UMETA(DisplayName = "DefaultMAX")
+};
+
+UENUM(BlueprintType)
+enum class ECombatState : uint8
+{
+	ECS_Unoccupied UMETA(DisplayName = "Unoccupied"),
+	ECS_FireTimerInProgress UMETA(DisplayName = "FireTimerInProgress"),
+	ECS_Reloading UMETA(DisplayName = "Reloading"),
+	ECS_MAX UMETA(DisplayName = "DefaultMAX")
+};
+
 UCLASS()
 class SHOOTER_API AShooterCharacter : public ACharacter
 {
@@ -39,7 +56,7 @@ protected:
 	 * @param Value input value from mouse movement
 	*/
 	void Turn(float Value);
-\
+
 	/**Function to look up and down at a certain Rate for mouseY input
 	 * @param Value input value from mouse movement
 	*/
@@ -95,6 +112,18 @@ protected:
 
 	/** Drops the currently equipped weapon with the TraceHitWeapon */
 	void SwapWeapon(AWeapon* WeaponToSwap);
+
+	/** Initialize the ammo map with ammo values*/
+	void InitializeAmmoMap();
+
+	/** Check to amke sure our weapon has ammo */
+	bool WeaponHasAmmo();
+
+	void PlayFireSound();
+
+	void SendBullet();
+
+	void PlayGunfireMontage();
 
 public:	
 	// Called every frame
@@ -258,6 +287,22 @@ private:
 	/** Distance upward from the camera for the interp destination*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly,  Category=Items, meta=(AllowPrivateAccess="true"))
 	float CameraInterpElevation;
+
+	/** Map to keep track of different ammo types */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Items, meta=(AllowPrivateAccess="true"))
+	TMap<EAmmoType, int32> AmmoMap;
+
+	/** Starting amount of 9mm ammo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Items, meta=(AllowPrivateAccess="true"))
+	int32 Starting9mmAmmo;
+
+	/** Starting amount of AR ammo */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Items, meta=(AllowPrivateAccess="true"))
+	int32 StartingARAmmo;
+
+	/** Combat statue, Can only fire or reload when unoccupied */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess="true"))
+	ECombatState CombatState;
 
 public:
 	/**Get CameraBoom Subobject*/
