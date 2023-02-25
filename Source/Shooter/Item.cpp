@@ -16,8 +16,8 @@ AItem::AItem():
 	ItemState(EItemState::EIS_Pickup),
 	// Item Interp Variables
 	ItemInterpStartLocation(FVector(0.f)),
-	ZCurveTime(0.7f),
 	CameraTargetLocation(FVector(0.f)),
+	ZCurveTime(0.7f),
 	bInterping(false),
 	ItemInterpX(0.f),
 	ItemInterpY(0.f),

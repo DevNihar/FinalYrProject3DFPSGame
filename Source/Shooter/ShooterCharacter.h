@@ -4,15 +4,10 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "AmmoType.h"
 #include "ShooterCharacter.generated.h"
 
-UENUM(BlueprintType)
-enum class EAmmoType : uint8
-{
-	EAT_9mm UMETA(DisplayName = "9mm"),
-	EAT_AR UMETA(DisplayName = "Assualt Rifle"),
-	EAT_MAX UMETA(DisplayName = "DefaultMAX")
-};
+
 
 UENUM(BlueprintType)
 enum class ECombatState : uint8
@@ -119,11 +114,30 @@ protected:
 	/** Check to amke sure our weapon has ammo */
 	bool WeaponHasAmmo();
 
+	/** FireWeapon Functions*/
 	void PlayFireSound();
-
 	void SendBullet();
-
 	void PlayGunfireMontage();
+
+	/** Bound to R key and Gamepad face left button*/
+	void ReloadButtonPressed();
+
+	/** handles weapon reloading*/
+	void ReloadWeapon();
+
+	UFUNCTION(BlueprintCallable)
+	void FinishReloading();
+
+	/** Checks to see if we have the ammo for the equipped weapon's ammo type */
+	bool CarryingAmmo();
+
+	/** Called from animation blueprint with grab clip notify */
+	UFUNCTION(BlueprintCallable)
+	void GrabClip();
+
+	/** Called from animation blueprint with release clip notify */
+	UFUNCTION(BlueprintCallable)
+	void ReleaseClip();
 
 public:	
 	// Called every frame
@@ -303,6 +317,19 @@ private:
 	/** Combat statue, Can only fire or reload when unoccupied */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess="true"))
 	ECombatState CombatState;
+
+	/** Montage for Reloading the weapon */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Combat, meta = (AllowPrivateAccess="true"))
+	UAnimMontage* ReloadMontage;
+
+	/** Transform of the clip when we first grab the clip when reloading */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess="true"))
+	FTransform ClipTransform;
+
+	/** Scene component to attach to the character's hand when relaoding  */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess="true"))
+	USceneComponent* HandSceneComponent;
+	 
 
 public:
 	/**Get CameraBoom Subobject*/
