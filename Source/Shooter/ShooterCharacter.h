@@ -139,6 +139,17 @@ protected:
 	UFUNCTION(BlueprintCallable)
 	void ReleaseClip();
 
+	void CrouchButtonPressed();
+
+	virtual void Jump() override;
+
+	/** Interps Capsule half height when Crouching/Standing */
+	void InterpCapsuleHalfHeight(float DeltaTime);
+
+	void Aim();
+
+	void StopAiming();
+
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -220,9 +231,11 @@ private:
 	bool bAiming;
 
 	/** Default Camera field of view value*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera, meta = (AllowPrivateAccess="true"))
 	float CameraDefaultFOV;
 
 	/** Field of view when zoomed in*/
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = Camera, meta = (AllowPrivateAccess="true"))
 	float CameraZoomedFOV;
 
 	/** camera field of view in the current frame*/
@@ -329,7 +342,43 @@ private:
 	/** Scene component to attach to the character's hand when relaoding  */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Combat, meta = (AllowPrivateAccess="true"))
 	USceneComponent* HandSceneComponent;
-	 
+
+	/** True when Crouching*/
+	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category=Movement, meta = (AllowPrivateAccess="true"))
+	bool bCrouching;
+
+	/** Regular movement Speed */
+	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category=Movement, meta = (AllowPrivateAccess="true"))
+	float BaseMovementSpeed;
+
+	/** Movement Speed when Crouching */
+	UPROPERTY(VisibleAnyWhere, BlueprintReadOnly, Category=Movement, meta = (AllowPrivateAccess="true"))
+	float CrouchMovementSpeed;
+
+	/** Current half height of the Capsule */
+	float CurrentCapsuleHalfHeight;
+
+	/** half Height of the capsule when standing */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Movement,  meta = (AllowPrivateAccess="true"))
+	float StandingCapsuleHalfHeight;
+
+	/** half Height of the capsule when crouching */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Movement,  meta = (AllowPrivateAccess="true"))
+	float CrouchingCapsuleHalfHeight;
+
+	/** Friction Changing variables to handle the sliding on the ground effect when crouching we gave this effect 
+	 * when we were running when standing but we do not need it when crouching.
+	*/
+	/** Ground Friction Value when Not Crouching */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Movement,  meta = (AllowPrivateAccess="true"))
+	float BaseGroundFriction; 
+	/** Ground Friction Value when Not Crouching */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category=Movement,  meta = (AllowPrivateAccess="true"))
+	float CrouchingGroundFriction;
+
+	/** used for knowing when the aiming button is pressed */
+	bool bAimingButtonpressed;
+
 
 public:
 	/**Get CameraBoom Subobject*/
@@ -354,4 +403,8 @@ public:
 	FVector GetCameraInterpLocation();
 
 	void GetPickupItem(AItem* Item);
+
+	FORCEINLINE ECombatState GetCombatState() const { return CombatState; }
+
+	FORCEINLINE bool GetCrouching() const { return bCrouching; }
 };
