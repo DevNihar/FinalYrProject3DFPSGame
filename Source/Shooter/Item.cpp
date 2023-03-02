@@ -249,7 +249,7 @@ void AItem::ItemInterp(float DeltaTime)
 		// Get the item's initial location when the curve started
 		FVector ItemLocation = ItemInterpStartLocation;
 		// Get Target location in front of the camera 
-		const FVector CameraInterpLocation{Character->GetInterpLocation(InterpLocIndex).SceneComponent->GetComponentLocation()};
+		const FVector CameraInterpLocation{GetInterpLocation()};
 		// Vector from itemInterpLocation to Cameralocation with X and Y zeroed out
 		const FVector ItemToCamera{FVector(0.f, 0.f, (CameraInterpLocation - ItemLocation).Z)};
 		//Scale Factor to multiply with Curve Value
