@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
+#include "Engine/DataTable.h"
 #include "Item.generated.h"
 
 UENUM(BlueprintType)
@@ -35,6 +36,30 @@ enum class EItemType : uint8
 	EIT_Ammo UMETA(DisplayName = "Ammo"),
 	EIT_Weapon UMETA(DisplayName = "Weapon"),
 	EIT_MAX UMETA(DisplayName = "DefaultMAX")
+};
+
+USTRUCT(BlueprintType)
+struct FItemRarityTable : public FTableRowBase
+{
+	GENERATED_BODY()
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FLinearColor GlowColor;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FLinearColor LightColor;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	FLinearColor DarkColor;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 NumberOfStars;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	UTexture2D* IconBackground;
+
+	UPROPERTY(EditAnywhere, BlueprintReadWrite)
+	int32 CustomDepthStencil;
 };
 
 UCLASS()
@@ -82,16 +107,27 @@ protected:
 	/** Get InterpLocation based on Item type */
 	FVector GetInterpLocation();
 
-	void PlayPickupSound();
+	void PlayPickupSound(bool bForcePlaySound = false);
 
-	
+	virtual void InitializeCustomDepth();
+
+	/** C++ version of Construction script This script runs before running the game */
+	virtual void OnConstruction(const FTransform& Transform) override;	
+
+	void EnableGlowMaterial();
+
+	void UpdatePulse();
+
+	void ResetPulseTimer();
+
+	void StartPulseTimer();
 
 public:	
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
 	// Called in AshooterCharacter::GetPickupItem
-	void PlayEquipSound();
+	void PlayEquipSound(bool bForcePlaySound = false);
 
 private:
 	/** Skeletal Mesh for the Item*/
@@ -118,7 +154,7 @@ private:
 	int32 ItemCount;
 
 	/** Tells the number of stars to show on the pickup widget*/
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category= "Item Properties", meta = (AllowPrivateAccess="true"))
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category= Rarity, meta = (AllowPrivateAccess="true"))
 	EItemRarity ItemRarity;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Item Properties", meta = (AllowPrivateAccess="true"))
@@ -180,8 +216,83 @@ private:
 
 	/** index of the Interp location this item is Interping to */
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Item Properties", meta = (AllowPrivateAccess="true"))
-	int32 InterpLocIndex;
+	int32  InterpLocIndex;
 
+	/** Index of the material we'd like to change at runtime */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category= "Item Properties", meta = (AllowPrivateAccess="true"))
+	int32 MaterialIndex;
+
+	/** Dynamic Instance that we can change at run time */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category= "Item Properties", meta = (AllowPrivateAccess="true"))
+	UMaterialInstanceDynamic* DynamicMaterialInstance;
+
+	/** material Instance used with the dynamic material instance */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category= "Item Properties", meta = (AllowPrivateAccess="true"))
+	UMaterialInstance* MaterialInstance;
+
+	bool bCanChangeCustomDepth;
+
+	/** Curve to drive the dynamic material parameters */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category= "Item Properties", meta = (AllowPrivateAccess="true"))
+	class UCurveVector* PulseCurve;
+
+	FTimerHandle PulseTimer;
+
+	/** Time for the pulse timer */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category= "Item Properties", meta = (AllowPrivateAccess="true"))
+	float PulseCurveTime;
+
+	UPROPERTY(VisibleAnywhere, Category= "Item Properties", meta = (AllowPrivateAccess="true"))
+	float GlowAmount;
+
+	UPROPERTY(VisibleAnywhere, Category= "Item Properties", meta = (AllowPrivateAccess="true"))
+	float FresnelExponent;
+
+	UPROPERTY(VisibleAnywhere, Category= "Item Properties", meta = (AllowPrivateAccess="true"))
+	float FresnelReflectFraction;
+
+	/** Curve to drive the dynamic material parameters */
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category= "Item Properties", meta = (AllowPrivateAccess="true"))
+	UCurveVector* InterpPulseCurve;
+
+	/** The Icon for this item in the inventory */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category= Inventory, meta = (AllowPrivateAccess="true"))
+	UTexture2D* IconItem;
+
+	/** The AmmoIcon for this item in the inventory */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category= Inventory, meta = (AllowPrivateAccess="true"))
+	UTexture2D* AmmoIcon;
+
+	/** Slot in the inventory array */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Inventory, meta = (AllowPrivateAccess="true"))
+	int32 SlotIndex;
+
+	/** True when Character Inventory is full */
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Inventory, meta = (AllowPrivateAccess = "true"))
+	bool bCharacterInventoryFull;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category=DataTable, meta = (AllowPrivateAccess = "true"))
+	class UDataTable* ItemRarityDatatable;
+
+	/** Color in the glow material*/
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category=Rarity, meta = (AllowPrivateAccess = "true"))
+	FLinearColor GlowColor;
+
+	/** Color in the glow material */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Rarity, meta = (AllowPrivateAccess = "true"))
+	FLinearColor LightColor;
+
+	/*Color in the glow material */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Rarity, meta = (AllowPrivateAccess = "true"))
+	FLinearColor DarkColor;
+
+	/** Number Of stars in the pickup widget */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Rarity, meta = (AllowPrivateAccess = "true"))
+	int32 NumberOfStars;
+
+	/** Background Icon for the inventory */
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = Rarity, meta = (AllowPrivateAccess = "true"))
+	UTexture2D* IconBackground;
 
 public:
 
@@ -191,12 +302,23 @@ public:
 	FORCEINLINE EItemState GetItemState() const { return ItemState; }
 	void SetItemState(EItemState State);
 	FORCEINLINE USkeletalMeshComponent* GetItemMesh() const { return ItemMesh; }
+	FORCEINLINE void SetCharacter(AShooterCharacter* Char) { Character = Char; }
 
 	/** Called From AShooterCharacter class */
-	void StartItemCurve(AShooterCharacter* Char);
+	void StartItemCurve(AShooterCharacter* Char, bool bForcePlaySound = false);
 
 	FORCEINLINE USoundCue* GetPickupSound() const { return PickupSound; }
 	FORCEINLINE USoundCue* GetEquipSound() const { return EquipSound; }
 
 	FORCEINLINE int32 GetItemCount() const { return ItemCount; }
+
+	virtual void EnableCustomDepth();
+
+	virtual void DisableCustomDepth();
+
+	void DisableGlowMaterial();
+
+	FORCEINLINE int32 GetSlotIndex() const { return SlotIndex; }
+	FORCEINLINE void SetSlotIndex(int32 Index) { SlotIndex = Index; }
+	FORCEINLINE void SetCharacterInventoryFull(bool bFull) { bCharacterInventoryFull = bFull; }
 };

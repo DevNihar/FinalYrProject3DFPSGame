@@ -9,6 +9,7 @@
 #include "Camera/CameraComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "Sound/SoundCue.h"
+#include "Curves/CurveVector.h"
 
 // Sets default values
 AItem::AItem():
@@ -25,7 +26,18 @@ AItem::AItem():
 	ItemInterpY(0.f),
 	InterpInitialYawOffset(0.f),
 	ItemType(EItemType::EIT_MAX),
-	InterpLocIndex(0)
+	InterpLocIndex(0),
+	// Outline and Glow Variables
+	MaterialIndex(0),
+	bCanChangeCustomDepth(true),
+	// Dynamic Material Parameters
+	GlowAmount(150.f), 
+	FresnelExponent(3.f),
+	FresnelReflectFraction(4.f),
+	PulseCurveTime(5.f),
+	// Inventory Variables
+	SlotIndex(0),
+	bCharacterInventoryFull(false)
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
@@ -75,6 +87,7 @@ void AItem::OnSphereEndOverlap(
 			if(ShooterCharacter)
 			{
 				ShooterCharacter->IncrementOverlappedItemCount(-1);
+				ShooterCharacter->UnHighlightInventorySlot();
 			}
 		}
 	}
@@ -162,6 +175,7 @@ void AItem::SetItemProperties(EItemState State)
 		// Set Item Mesh Properties
 		ItemMesh->SetSimulatePhysics(true);
 		ItemMesh->SetEnableGravity(true);
+		ItemMesh->SetVisibility(true);
 		ItemMesh->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 		ItemMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		ItemMesh->SetCollisionResponseToChannel(ECollisionChannel::ECC_WorldStatic, ECollisionResponse::ECR_Block);
@@ -188,8 +202,38 @@ void AItem::SetItemProperties(EItemState State)
 		CollisionBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
 		CollisionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 		break;
+
+	case EItemState::EIS_PickedUp:
+		PickupWidget->SetVisibility(false);
+		// Set Item Mesh Properties
+		ItemMesh->SetSimulatePhysics(false);
+		ItemMesh->SetEnableGravity(false);
+		ItemMesh->SetVisibility(false);
+		ItemMesh->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		ItemMesh->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		//Set AreaSphere properties
+		AreaSphere->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		AreaSphere->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		// Set CollisionBox Properties
+		CollisionBox->SetCollisionResponseToAllChannels(ECollisionResponse::ECR_Ignore);
+		CollisionBox->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		break;
 	}
 }
+
+void AItem::ResetPulseTimer()
+{
+	StartPulseTimer();
+}
+
+void AItem::StartPulseTimer()
+{
+	if(ItemState == EItemState::EIS_Pickup)
+	{
+		GetWorldTimerManager().SetTimer(PulseTimer, this, &AItem::ResetPulseTimer, PulseCurveTime);
+	}
+}
+
 
 void AItem::SetItemState(EItemState State)
 {
@@ -197,7 +241,7 @@ void AItem::SetItemState(EItemState State)
 	SetItemProperties(State);
 }
 
-void AItem::StartItemCurve(AShooterCharacter* Char)
+void AItem::StartItemCurve(AShooterCharacter* Char, bool bForcePlaySound)
 {
 	// Stores a handle to the character
 	Character = Char;
@@ -206,11 +250,13 @@ void AItem::StartItemCurve(AShooterCharacter* Char)
 	// Add 1 to the item count for this interp location struct
 	Character->IncrementInterpLocItemCount(InterpLocIndex, 1);
 
-	PlayPickupSound();
+	PlayPickupSound(bForcePlaySound);
+
 	// Sets the start location of the current item
 	ItemInterpStartLocation = GetActorLocation();
 	bInterping = true;
 	SetItemState(EItemState::EIS_EquipInterping);
+	GetWorldTimerManager().ClearTimer(PulseTimer);
 
 	GetWorldTimerManager().SetTimer(ItemInterpTimer, this, &AItem::FinishInterping, ZCurveTime);
 	// Get Initial Yaw of the Camera
@@ -219,6 +265,8 @@ void AItem::StartItemCurve(AShooterCharacter* Char)
 	const float ItemRotationYaw = GetActorRotation().Yaw;
 	// The Initial Yaw Offset between Camera and Item
 	InterpInitialYawOffset = ItemRotationYaw - CameraRotationYaw;
+
+	bCanChangeCustomDepth = false;
 }
 
 void AItem::FinishInterping()
@@ -229,9 +277,13 @@ void AItem::FinishInterping()
 		// Substract 1 from the item count of the interp locatipn struct
 		Character->IncrementInterpLocItemCount(InterpLocIndex, -1);
 		Character->GetPickupItem(this);
+		Character->UnHighlightInventorySlot();
 	}
 	// Set Scale Back To Normal 
 	SetActorScale3D(FVector(1.f));
+	DisableGlowMaterial();
+	bCanChangeCustomDepth = true;
+	DisableCustomDepth();
 }
 
 void AItem::ItemInterp(float DeltaTime)
@@ -296,11 +348,18 @@ FVector AItem::GetInterpLocation()
 	return FVector();
 }
 
-void AItem::PlayPickupSound()
+void AItem::PlayPickupSound(bool bForcePlaySound)
 {
 	if(Character)
 	{
-		if(Character->ShouldPlayPickupSound())
+		if (bForcePlaySound)
+		{
+			if (PickupSound)
+			{
+				UGameplayStatics::PlaySound2D(this, PickupSound);
+			}
+		}
+		else if(Character->ShouldPlayPickupSound())
 		{
 			Character->StartPickupSoundTimer();
 			if(PickupSound)
@@ -311,11 +370,139 @@ void AItem::PlayPickupSound()
 	}
 }
 
-void AItem::PlayEquipSound()
+void AItem::EnableCustomDepth()
+{
+	if(bCanChangeCustomDepth)
+	{
+		ItemMesh->SetRenderCustomDepth(true);
+	}	
+}
+
+void AItem::DisableCustomDepth()
+{
+	if(bCanChangeCustomDepth)
+	{
+		ItemMesh->SetRenderCustomDepth(false);
+	}	
+}
+
+void AItem::InitializeCustomDepth()
+{
+	DisableCustomDepth();
+}
+
+void AItem::OnConstruction(const FTransform &Transform)
+{
+	// Load the data in the item rarity data table
+	FString RarityTablePath(TEXT("/Script/Engine.DataTable'/Game/_Game/DataTables/ItemRarityDataTable.ItemRarityDataTable'"));
+	UDataTable* RarityTableObject = Cast<UDataTable>(StaticLoadObject(UDataTable::StaticClass(), nullptr, *RarityTablePath));
+	if (RarityTableObject)
+	{
+		FItemRarityTable* RarityRow = nullptr;
+		switch (ItemRarity)
+		{
+		case EItemRarity::EIR_Damaged:
+			RarityRow = RarityTableObject->FindRow<FItemRarityTable>(FName("Damaged"), TEXT(""));
+			break;
+		
+		case EItemRarity::EIR_Common:
+			RarityRow = RarityTableObject->FindRow<FItemRarityTable>(FName("Common"), TEXT(""));
+			break;
+		
+		case EItemRarity::EIR_Uncommon:
+			RarityRow = RarityTableObject->FindRow<FItemRarityTable>(FName("UnCommon"), TEXT(""));
+			break;
+
+		case EItemRarity::EIR_Rare:
+			RarityRow = RarityTableObject->FindRow<FItemRarityTable>(FName("Rare"), TEXT(""));
+			break;
+
+		case EItemRarity::EIR_Legendary:
+			RarityRow = RarityTableObject->FindRow<FItemRarityTable>(FName("Legendary"), TEXT(""));
+			break;
+		}
+
+		if (RarityRow)
+		{
+			GlowColor = RarityRow->GlowColor;
+			LightColor = RarityRow->LightColor;
+			DarkColor = RarityRow->DarkColor;
+			NumberOfStars = RarityRow->NumberOfStars;
+			IconBackground = RarityRow->IconBackground;
+			if (GetItemMesh())
+			{
+				GetItemMesh()->SetCustomDepthStencilValue(RarityRow->CustomDepthStencil);
+			}
+		}
+	}
+
+	if (MaterialInstance)
+	{
+		DynamicMaterialInstance = UMaterialInstanceDynamic::Create(MaterialInstance, this);
+		DynamicMaterialInstance->SetVectorParameterValue(TEXT("FresnelColor"), GlowColor);
+		ItemMesh->SetMaterial(MaterialIndex, DynamicMaterialInstance);
+	}
+	EnableGlowMaterial();
+}
+
+void AItem::EnableGlowMaterial()
+{
+	if(DynamicMaterialInstance)
+	{
+		DynamicMaterialInstance->SetScalarParameterValue(TEXT("GlowBlendAlpha"), 0.f);
+	}
+}
+
+void AItem::UpdatePulse()
+{
+	float ElapsedTime{};
+	FVector CurveValue{};
+	switch(ItemState)
+	{
+		case EItemState::EIS_Pickup:
+			if(PulseCurve)
+			{
+				ElapsedTime = GetWorldTimerManager().GetTimerElapsed(PulseTimer);
+				CurveValue = PulseCurve->GetVectorValue(ElapsedTime);
+			}
+			break;
+
+		case EItemState::EIS_EquipInterping:
+			if(InterpPulseCurve)
+			{
+				ElapsedTime = GetWorldTimerManager().GetTimerElapsed(ItemInterpTimer);
+				CurveValue = PulseCurve->GetVectorValue(ElapsedTime);
+			}
+			break;
+	}
+	if(DynamicMaterialInstance)
+	{
+	DynamicMaterialInstance->SetScalarParameterValue(TEXT("GlowAmount"), CurveValue.X * GlowAmount);
+	DynamicMaterialInstance->SetScalarParameterValue(TEXT("FresnelExponent"), CurveValue.Y * FresnelExponent);
+	DynamicMaterialInstance->SetScalarParameterValue(TEXT("FresnelReflectFraction"), CurveValue.Z * FresnelReflectFraction);
+	} 
+}
+
+void AItem::DisableGlowMaterial()
+{
+	if(DynamicMaterialInstance)
+	{
+		DynamicMaterialInstance->SetScalarParameterValue(TEXT("GlowBlendAlpha"), 1.f);
+	}
+}
+
+void AItem::PlayEquipSound(bool bForcePlaySound)
 {
 	if(Character)
 	{
-		if(Character->ShouldPlayEquipSound())
+		if (bForcePlaySound)
+		{
+			if (EquipSound)
+			{
+				UGameplayStatics::PlaySound2D(this, EquipSound);
+			}
+		}
+		else if(Character->ShouldPlayEquipSound())
 		{
 			Character->StartEquipSoundTimer();
 			if(EquipSound)
@@ -345,6 +532,11 @@ void AItem::BeginPlay()
 	AreaSphere->OnComponentEndOverlap.AddDynamic(this, &AItem::OnSphereEndOverlap);
 
 	SetItemProperties(ItemState);
+
+	// Set Custom Depth to disable
+	InitializeCustomDepth();
+	
+	StartPulseTimer();
 }
 
 // Called every frame
@@ -353,6 +545,7 @@ void AItem::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 	// handle ItemInteroing when in EquipInterping State
 	ItemInterp(DeltaTime);
-
+	// Get Curve values from pulse curve and set dynamic material parameters
+	UpdatePulse();
 }
 
