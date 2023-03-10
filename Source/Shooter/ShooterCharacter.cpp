@@ -53,7 +53,6 @@ AShooterCharacter::AShooterCharacter():
 	// Automatic Fire Variables	
 	bFireButtonPressed(false),
 	bShouldFire(true),
-	AutomaticFireRate(0.1f),
 	// Item Trace Variables
 	bShouldTraceForItems(false),
 	OverlappedItemCount(0),
@@ -288,7 +287,6 @@ void AShooterCharacter::SetLookRates()
 		BaseTurnRate = HipTurnRate;
 		BaseLookUpRate = HipLookUpRate;
 	}	
-}
 
 void AShooterCharacter::CalculateCrosshairSpread(float DeltaTime)
 {
@@ -300,6 +298,7 @@ void AShooterCharacter::CalculateCrosshairSpread(float DeltaTime)
 	CrosshairVelocityFactor = FMath::GetMappedRangeValueClamped(WalkSpeedRange, VelocityMultiplierRange, Velocity.Size());
 	if(GetMovementComponent()->IsFalling())
 	{
+}
 		CrosshairInAirFactor = FMath::FInterpTo(CrosshairInAirFactor, 2.25f, DeltaTime, 2.25f);
 	}
 	else
@@ -362,8 +361,9 @@ void AShooterCharacter::FireButtonReleased()
 
 void AShooterCharacter::StartFireTimer()
 {
+	if (EquippedWeapon == nullptr) return;
 	CombatState = ECombatState::ECS_FireTimerInProgress;
-	GetWorldTimerManager().SetTimer(AutoFireTimer, this, &AShooterCharacter::AutoFireReset, AutomaticFireRate);
+	GetWorldTimerManager().SetTimer(AutoFireTimer, this, &AShooterCharacter::AutoFireReset, EquippedWeapon->GetAutoFireRate());
 }
 
 void AShooterCharacter::AutoFireReset()
@@ -605,8 +605,8 @@ bool AShooterCharacter::WeaponHasAmmo()
 
 void AShooterCharacter::PlayFireSound()
 {
-	if(FireSound){
-		UGameplayStatics::PlaySound2D(this, FireSound);
+	if(EquippedWeapon->GetFireSound()){
+		UGameplayStatics::PlaySound2D(this, EquippedWeapon->GetFireSound());
 	}
 }
 
@@ -615,8 +615,8 @@ void AShooterCharacter::SendBullet()
 	const USkeletalMeshSocket* BarrelSocket = EquippedWeapon->GetItemMesh()->GetSocketByName("BarrelSocket");
 	if(BarrelSocket){
 		const FTransform SocketTransform = BarrelSocket->GetSocketTransform(EquippedWeapon->GetItemMesh());
-		if(MuzzleFlash){
-			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), MuzzleFlash, SocketTransform);
+		if(EquippedWeapon->GetMuzzleFlash()){
+			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), EquippedWeapon->GetMuzzleFlash(), SocketTransform);
 		}
 
 		FVector BeamEnd;
@@ -761,7 +761,7 @@ void AShooterCharacter::CrouchButtonPressed()
 	{
 		bCrouching = !bCrouching;
 	}
-	if(bCrouching)
+	if(bCrouching)crosshairspread
 	{
 		GetCharacterMovement()->MaxWalkSpeed = CrouchMovementSpeed;
 		GetCharacterMovement()->GroundFriction = CrouchingGroundFriction;
