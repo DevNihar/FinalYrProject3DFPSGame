@@ -210,6 +210,11 @@ void AShooterCharacter::FireWeapon(){
 
 		// Start Fire timer For Firing the weapon
 		StartFireTimer();
+
+		if (EquippedWeapon->GetWeaponType() == EWeaponType::EWT_Pistol)
+		{
+			EquippedWeapon->StartSlideTimer();
+		}
 	}
 
 }
@@ -247,7 +252,7 @@ bool AShooterCharacter::GetBeamEndLocation(const FVector& MuzzleSocketLocation, 
 void AShooterCharacter::AimingButtonPressed()
 {
 	bAimingButtonpressed = true;
-	if(CombatState != ECombatState::ECS_Reloading)
+	if(CombatState != ECombatState::ECS_Reloading && CombatState != ECombatState::ECS_Equipping)
 	{
 		Aim();
 	}
@@ -277,7 +282,7 @@ void AShooterCharacter::CameraInterpZoom(float DeltaTime)
 
 void AShooterCharacter::SetLookRates()
 {
-	if(bAiming)
+	if (bAiming)
 	{
 		BaseLookUpRate = AimingLookUpRate;
 		BaseTurnRate = AimingTurnRate;
@@ -286,8 +291,8 @@ void AShooterCharacter::SetLookRates()
 	{
 		BaseTurnRate = HipTurnRate;
 		BaseLookUpRate = HipLookUpRate;
-	}	
-
+	}
+}
 void AShooterCharacter::CalculateCrosshairSpread(float DeltaTime)
 {
 	FVector2D WalkSpeedRange{0.f, 600.f};
@@ -298,7 +303,6 @@ void AShooterCharacter::CalculateCrosshairSpread(float DeltaTime)
 	CrosshairVelocityFactor = FMath::GetMappedRangeValueClamped(WalkSpeedRange, VelocityMultiplierRange, Velocity.Size());
 	if(GetMovementComponent()->IsFalling())
 	{
-}
 		CrosshairInAirFactor = FMath::FInterpTo(CrosshairInAirFactor, 2.25f, DeltaTime, 2.25f);
 	}
 	else
@@ -369,10 +373,11 @@ void AShooterCharacter::StartFireTimer()
 void AShooterCharacter::AutoFireReset()
 {
 	CombatState = ECombatState::ECS_Unoccupied;
+	if (EquippedWeapon == nullptr) return;
 
 	if(WeaponHasAmmo())
 	{
-		if(bFireButtonPressed)
+		if(bFireButtonPressed && EquippedWeapon->GetAutomatic())
 		{
 			FireWeapon();
 		}
@@ -721,6 +726,10 @@ void AShooterCharacter::FinishReloading()
 void AShooterCharacter::FinishEquipping()
 {
 	CombatState = ECombatState::ECS_Unoccupied;
+	if (bAimingButtonpressed)
+	{
+		Aim();
+	}
 }
 
 bool AShooterCharacter::CarryingAmmo()
@@ -761,7 +770,7 @@ void AShooterCharacter::CrouchButtonPressed()
 	{
 		bCrouching = !bCrouching;
 	}
-	if(bCrouching)crosshairspread
+	if(bCrouching)
 	{
 		GetCharacterMovement()->MaxWalkSpeed = CrouchMovementSpeed;
 		GetCharacterMovement()->GroundFriction = CrouchingGroundFriction;
@@ -932,6 +941,10 @@ void AShooterCharacter::ExchangeInventoryItems(int32 CurrentItemIndex, int32 New
 		(CombatState == ECombatState::ECS_Unoccupied || CombatState == ECombatState::ECS_Equipping);
 	if (bCanExchangeItems)
 	{
+		if (bAiming)
+		{
+			StopAiming();
+		}
 		auto OldEquippedWeapon = EquippedWeapon;
 		auto NewWeapon = Cast<AWeapon>(Inventory[NewItemIndex]);
 		EquipWeapon(NewWeapon);
