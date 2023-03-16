@@ -82,7 +82,7 @@ protected:
 	void FireWeapon();
 
 	// Fucction to get the end location to spawn the beam and impact particles
-	bool GetBeamEndLocation(const FVector& MuzzleSocketLocation, FVector& OutBeamEndLocation);
+	bool GetBeamEndLocation(const FVector& MuzzleSocketLocation, FHitResult& OutHitResult);
 
 	void AimingButtonPressed();
 	void AimingButtonReleased();

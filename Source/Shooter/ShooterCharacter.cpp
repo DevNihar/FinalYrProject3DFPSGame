@@ -19,6 +19,8 @@
 #include "Ammo.h"
 #include "PhysicalMaterials/PhysicalMaterial.h"
 #include "Shooter.h"
+#include "BulletHitInterface.h"
+#include "Enemy.h"
 
 // Sets default values
 AShooterCharacter::AShooterCharacter():
@@ -221,8 +223,9 @@ void AShooterCharacter::FireWeapon(){
 
 }
 
-bool AShooterCharacter::GetBeamEndLocation(const FVector& MuzzleSocketLocation, FVector& OutBeamEndLocation)
+bool AShooterCharacter::GetBeamEndLocation(const FVector& MuzzleSocketLocation, FHitResult& OutHitResult)
 {
+	FVector OutBeamEndLocation;
 	// Check for Crosshair Trace Hit
 	FHitResult CrosshairHitResult;
 	bool bCrosshairHit = TraceUnderCrosshair(CrosshairHitResult, OutBeamEndLocation);
@@ -237,18 +240,17 @@ bool AShooterCharacter::GetBeamEndLocation(const FVector& MuzzleSocketLocation, 
 		// Out Beam Location is the End Location For the Line Trace
 	}
 	// Perform a second trace this time from the gun barrel
-	FHitResult WeaponTraceHit;
 	const FVector WeaponTraceStart{ MuzzleSocketLocation };
 	const FVector StartToEnd { OutBeamEndLocation - MuzzleSocketLocation };
 	const FVector WeaponTraceEnd{ MuzzleSocketLocation + StartToEnd * 1.25f };
-	GetWorld()->LineTraceSingleByChannel(WeaponTraceHit, WeaponTraceStart, WeaponTraceEnd, ECollisionChannel::ECC_Visibility);
+	GetWorld()->LineTraceSingleByChannel(OutHitResult, WeaponTraceStart, WeaponTraceEnd, ECollisionChannel::ECC_Visibility);
 	
-	if(WeaponTraceHit.bBlockingHit)// Object between barrel and beam end point?
+	if(!OutHitResult.bBlockingHit)// Object between barrel and beam end point?
 	{
-		OutBeamEndLocation = WeaponTraceHit.Location;
-		return true;
+		OutHitResult.Location = OutBeamEndLocation;
+		return false;
 	}
-	return false;
+	return true;
 }
 
 void AShooterCharacter::AimingButtonPressed()
@@ -620,27 +622,56 @@ void AShooterCharacter::PlayFireSound()
 void AShooterCharacter::SendBullet()
 {
 	const USkeletalMeshSocket* BarrelSocket = EquippedWeapon->GetItemMesh()->GetSocketByName("BarrelSocket");
-	if(BarrelSocket){
+	if(BarrelSocket)
+	{
 		const FTransform SocketTransform = BarrelSocket->GetSocketTransform(EquippedWeapon->GetItemMesh());
-		if(EquippedWeapon->GetMuzzleFlash()){
+		if(EquippedWeapon->GetMuzzleFlash())
+		{
 			UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), EquippedWeapon->GetMuzzleFlash(), SocketTransform);
 		}
 
-		FVector BeamEnd;
-		bool bBeamEnd = GetBeamEndLocation(SocketTransform.GetLocation(), BeamEnd);
+		FHitResult BeamHitResult;
+		bool bBeamEnd = GetBeamEndLocation(SocketTransform.GetLocation(), BeamHitResult);
 
-		if(bBeamEnd){
-			// Spawn impact particles after updating the beam end point 
-			if(ImpactParticles)
+		if(bBeamEnd)
+		{
+			// Does hit actor implement BulletHitInterface ?
+			if(BeamHitResult.GetActor()->IsValidLowLevel())
 			{
-				UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, BeamEnd);
+				IBulletHitInterface* BulletHitInterface = Cast<IBulletHitInterface>(BeamHitResult.GetActor());
+				if (BulletHitInterface)
+				{
+					BulletHitInterface->BulletHit_Implementation(BeamHitResult);
+				}
+				AEnemy* Enemy = Cast<AEnemy>(BeamHitResult.GetActor());
+				if (Enemy)
+				{
+					UGameplayStatics::ApplyDamage(
+						BeamHitResult.GetActor(), 
+						EquippedWeapon->GetDamage(), 
+						GetController(), 
+						this, 
+						UDamageType::StaticClass());
+				}
 			}
+			else
+			{
+				// Spawn Default Particles
+				// Spawn impact particles after updating the beam end point 
+				if (ImpactParticles)
+				{
+					UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), ImpactParticles, BeamHitResult.Location);
+				}
+			}
+			
 
 			// Spawn Beam from barrel to beam end point
-			if(BeamParticles){
+			if(BeamParticles)
+			{
 				UParticleSystemComponent* Beam = UGameplayStatics::SpawnEmitterAtLocation(GetWorld(), BeamParticles, SocketTransform);
-				if(Beam){
-					Beam->SetVectorParameter(FName("Target"), BeamEnd);
+				if(Beam)
+				{
+					Beam->SetVectorParameter(FName("Target"), BeamHitResult.Location);
 				}
 			}
 		}
@@ -650,7 +681,8 @@ void AShooterCharacter::SendBullet()
 void AShooterCharacter::PlayGunfireMontage()
 {
 	UAnimInstance* AnimInstance = GetMesh()->GetAnimInstance();
-	if(AnimInstance && HipFireMontage){
+	if(AnimInstance && HipFireMontage)
+	{
 		AnimInstance->Montage_Play(HipFireMontage);
 		AnimInstance->Montage_JumpToSection(FName("StartFire"));
 	}
