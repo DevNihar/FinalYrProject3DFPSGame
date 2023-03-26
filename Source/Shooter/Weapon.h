@@ -260,7 +260,7 @@ public:
 	FORCEINLINE bool GetAutomatic() const { return bAutomatic; }
 
 	FORCEINLINE float GetDamage() const { return Damage; }
-	FORCEINLINE float GetHeadShotDamage() const { return HeadshotDamage; }
+	FORCEINLINE float GetHeadshotDamage() const { return HeadshotDamage; }
 
 	void ReloadAmmo(int32 Amount);
 
